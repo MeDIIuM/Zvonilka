@@ -158,18 +158,14 @@ function render() {
     const avatar = row.querySelector(".avatar");
     const name = row.querySelector(".name");
     const meta = row.querySelector(".meta");
-    const callBtn = row.querySelector(".call-btn");
 
     fillAvatar(avatar, contact);
 
     name.textContent = contact.name;
     meta.textContent = `Исходящих: ${contact.outgoingCallsCount}`;
 
-    row.addEventListener("click", () => {
-      openEdit(contact.id);
-    });
-
-    callBtn.addEventListener("click", (event) => {
+    avatar.classList.add("avatar-call-target");
+    avatar.addEventListener("click", (event) => {
       event.stopPropagation();
       registerOutgoingTap(contact.id, contact.primaryPhone);
       tryCall(contact.primaryPhone);

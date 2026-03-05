@@ -13,4 +13,18 @@ final class CallStatsStoreTests: XCTestCase {
         store.incrementCall(for: key)
         XCTAssertEqual(store.callsCount(for: key), 1)
     }
+
+    func testResetClearsAllCounts() {
+        let defaults = UserDefaults(suiteName: #function)!
+        defaults.removePersistentDomain(forName: #function)
+
+        let store = CallStatsStore(userDefaults: defaults)
+        store.incrementCall(for: "a")
+        store.incrementCall(for: "b")
+
+        store.resetAll()
+
+        XCTAssertEqual(store.callsCount(for: "a"), 0)
+        XCTAssertEqual(store.callsCount(for: "b"), 0)
+    }
 }

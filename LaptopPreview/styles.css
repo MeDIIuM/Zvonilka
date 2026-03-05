@@ -53,28 +53,12 @@ body {
   padding: 22px;
 }
 
-.topbar {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.eyebrow {
-  margin: 0;
-  font-size: 11px;
-  letter-spacing: 0.12em;
-  color: var(--subtle);
-}
-
-h1 {
-  margin: 2px 0 0;
-  font-size: 32px;
-  line-height: 1;
-}
-
 .search-wrap {
-  margin: 18px 0 18px;
+  margin: 0 0 18px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+  align-items: center;
 }
 
 input[type="search"] {
@@ -104,7 +88,7 @@ input[type="search"]:focus {
 
 .contact-row {
   display: grid;
-  grid-template-rows: auto auto 1fr auto;
+  grid-template-rows: auto auto 1fr;
   justify-items: center;
   align-content: start;
   gap: 10px;
@@ -361,10 +345,6 @@ h2 {
     border-radius: 16px;
   }
 
-  h1 {
-    font-size: 28px;
-  }
-
   .contacts-list {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 10px;
@@ -393,3 +373,8 @@ h2 {
     align-items: flex-start;
   }
 }
+
+.avatar-call-target {
+  cursor: pointer;
+}
+

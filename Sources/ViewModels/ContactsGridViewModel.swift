@@ -2,10 +2,9 @@
 import Combine
 
 @MainActor
-final class ContactsListViewModel: ObservableObject {
+final class ContactsGridViewModel: ObservableObject {
     @Published var contacts: [ContactItem] = []
     @Published var searchText: String = ""
-    @Published var hasContactsPermission = false
     @Published var permissionDenied = false
     @Published var loadingErrorMessage: String?
 
@@ -19,21 +18,24 @@ final class ContactsListViewModel: ObservableObject {
     }
 
     var filteredContacts: [ContactItem] {
-        guard !searchText.isEmpty else {
-            return contacts
+        let prepared = contacts
+
+        guard !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            return prepared
         }
 
-        return contacts.filter {
-            $0.fullName.localizedCaseInsensitiveContains(searchText) ||
-            ($0.phoneNumber?.localizedCaseInsensitiveContains(searchText) ?? false)
+        let query = searchText.lowercased()
+        return prepared.filter { item in
+            item.displayName.lowercased().contains(query) ||
+            (item.phoneNumber?.lowercased().contains(query) ?? false)
         }
     }
 
     func requestAccessAndLoad() async {
         do {
-            hasContactsPermission = try await contactsService.requestAccess()
-            permissionDenied = !hasContactsPermission
-            guard hasContactsPermission else { return }
+            let granted = try await contactsService.requestAccess()
+            permissionDenied = !granted
+            guard granted else { return }
             try loadContacts()
         } catch {
             loadingErrorMessage = "Ошибка доступа к контактам: \(error.localizedDescription)"
@@ -48,10 +50,15 @@ final class ContactsListViewModel: ObservableObject {
         }
     }
 
-    func registerOutgoingTapAndResort(for contact: ContactItem) {
+    func registerOutgoingTap(for contact: ContactItem) {
         guard let phoneNumber = contact.phoneNumber else { return }
         let key = statKey(contactID: contact.id, phoneNumber: phoneNumber)
         statsStore.incrementCall(for: key)
+        refresh()
+    }
+
+    func resetStatistics() {
+        statsStore.resetAll()
         refresh()
     }
 
@@ -62,7 +69,8 @@ final class ContactsListViewModel: ObservableObject {
             .map { raw in
                 ContactItem(
                     id: raw.id,
-                    fullName: raw.fullName,
+                    givenName: raw.givenName,
+                    familyName: raw.familyName,
                     phoneNumber: raw.phoneNumber,
                     avatarData: raw.avatarData,
                     outgoingCallsCount: callsCount(for: raw)
@@ -87,6 +95,15 @@ final class ContactsListViewModel: ObservableObject {
         if lhs.outgoingCallsCount != rhs.outgoingCallsCount {
             return lhs.outgoingCallsCount > rhs.outgoingCallsCount
         }
-        return lhs.fullName.localizedCaseInsensitiveCompare(rhs.fullName) == .orderedAscending
+
+        if lhs.hasName != rhs.hasName {
+            return lhs.hasName
+        }
+
+        if lhs.sortTitle != rhs.sortTitle {
+            return lhs.sortTitle < rhs.sortTitle
+        }
+
+        return lhs.id < rhs.id
     }
 }

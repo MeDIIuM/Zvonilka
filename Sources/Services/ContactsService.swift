@@ -8,7 +8,8 @@ protocol ContactsServiceProtocol {
 
 struct RawContact: Equatable {
     let id: String
-    let fullName: String
+    let givenName: String
+    let familyName: String
     let phoneNumber: String?
     let avatarData: Data?
 }
@@ -42,17 +43,14 @@ final class ContactsService: ContactsServiceProtocol {
         var result: [RawContact] = []
 
         try store.enumerateContacts(with: request) { contact, _ in
-            let fullName = [contact.givenName, contact.familyName]
-                .joined(separator: " ")
-                .trimmingCharacters(in: .whitespacesAndNewlines)
-
             let firstPhone = contact.phoneNumbers.first?.value.stringValue
             let avatar = contact.imageDataAvailable ? contact.imageData : nil
 
             result.append(
                 RawContact(
                     id: contact.identifier,
-                    fullName: fullName.isEmpty ? "Без имени" : fullName,
+                    givenName: contact.givenName,
+                    familyName: contact.familyName,
                     phoneNumber: firstPhone,
                     avatarData: avatar
                 )

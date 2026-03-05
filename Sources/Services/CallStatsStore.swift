@@ -3,6 +3,7 @@
 protocol CallStatsStoreProtocol {
     func callsCount(for key: String) -> Int
     func incrementCall(for key: String)
+    func resetAll()
 }
 
 final class CallStatsStore: CallStatsStoreProtocol {
@@ -21,6 +22,10 @@ final class CallStatsStore: CallStatsStoreProtocol {
         var currentStorage = storage
         currentStorage[key, default: 0] += 1
         userDefaults.set(currentStorage, forKey: storageKey)
+    }
+
+    func resetAll() {
+        userDefaults.removeObject(forKey: storageKey)
     }
 
     private var storage: [String: Int] {
