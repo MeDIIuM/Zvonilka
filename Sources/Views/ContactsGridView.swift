@@ -17,7 +17,7 @@ struct ContactsGridView: View {
             .safeAreaInset(edge: .top) {
                 topBar
                     .padding(.horizontal, 16)
-                    .padding(.top, 8)
+                    .padding(.top, 2)
                     .padding(.bottom, 10)
                     .background(.ultraThinMaterial)
             }
@@ -76,7 +76,7 @@ struct ContactsGridView: View {
                 }
             }
             .padding(.horizontal, 12)
-            .padding(.top, 72)
+            .padding(.top, 8)
             .padding(.bottom, 16)
         }
     }
@@ -121,3 +121,6 @@ struct ContactsGridView: View {
         openURL(url)
     }
 }
+
+
+
