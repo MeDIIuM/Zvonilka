@@ -36,17 +36,19 @@ final class ContactsGridViewModel: ObservableObject {
             let granted = try await contactsService.requestAccess()
             permissionDenied = !granted
             guard granted else { return }
-            try loadContacts()
+            try await loadContacts()
         } catch {
             loadingErrorMessage = "Ошибка доступа к контактам: \(error.localizedDescription)"
         }
     }
 
     func refresh() {
-        do {
-            try loadContacts()
-        } catch {
-            loadingErrorMessage = "Ошибка обновления: \(error.localizedDescription)"
+        Task {
+            do {
+                try await loadContacts()
+            } catch {
+                loadingErrorMessage = "Ошибка обновления: \(error.localizedDescription)"
+            }
         }
     }
 
@@ -62,8 +64,8 @@ final class ContactsGridViewModel: ObservableObject {
         refresh()
     }
 
-    private func loadContacts() throws {
-        rawContacts = try contactsService.fetchContacts()
+    private func loadContacts() async throws {
+        rawContacts = try await contactsService.fetchContacts()
 
         contacts = rawContacts
             .map { raw in

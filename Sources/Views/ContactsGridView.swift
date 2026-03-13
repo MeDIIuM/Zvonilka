@@ -7,21 +7,9 @@ struct ContactsGridView: View {
 
     var body: some View {
         NavigationStack {
-            Group {
-                if viewModel.permissionDenied {
-                    permissionDeniedView
-                } else {
-                    gridContent
-                }
-            }
-            .safeAreaInset(edge: .top) {
-                topBar
-                    .padding(.horizontal, 16)
-                    .padding(.top, 2)
-                    .padding(.bottom, 10)
-                    .background(.ultraThinMaterial)
-            }
-            .toolbar(.hidden, for: .navigationBar)
+            content
+                .background(Color(.systemBackground).ignoresSafeArea())
+                .toolbar(.hidden, for: .navigationBar)
         }
         .task {
             await viewModel.requestAccessAndLoad()
@@ -39,6 +27,22 @@ struct ContactsGridView: View {
             }
         } message: {
             Text(viewModel.loadingErrorMessage ?? "")
+        }
+    }
+
+    private var content: some View {
+        VStack(spacing: 12) {
+            topBar
+                .padding(.horizontal, 16)
+                .padding(.top, 8)
+
+            if viewModel.permissionDenied {
+                Spacer()
+                permissionDeniedView
+                Spacer()
+            } else {
+                gridContent
+            }
         }
     }
 

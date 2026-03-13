@@ -3,7 +3,7 @@ import Foundation
 
 protocol ContactsServiceProtocol {
     func requestAccess() async throws -> Bool
-    func fetchContacts() throws -> [RawContact]
+    func fetchContacts() async throws -> [RawContact]
 }
 
 struct RawContact: Equatable {
@@ -15,9 +15,8 @@ struct RawContact: Equatable {
 }
 
 final class ContactsService: ContactsServiceProtocol {
-    private let store = CNContactStore()
-
     func requestAccess() async throws -> Bool {
+        let store = CNContactStore()
         try await withCheckedThrowingContinuation { continuation in
             store.requestAccess(for: .contacts) { granted, error in
                 if let error {
@@ -29,34 +28,43 @@ final class ContactsService: ContactsServiceProtocol {
         }
     }
 
-    func fetchContacts() throws -> [RawContact] {
-        let keys: [CNKeyDescriptor] = [
-            CNContactIdentifierKey as CNKeyDescriptor,
-            CNContactGivenNameKey as CNKeyDescriptor,
-            CNContactFamilyNameKey as CNKeyDescriptor,
-            CNContactPhoneNumbersKey as CNKeyDescriptor,
-            CNContactImageDataKey as CNKeyDescriptor,
-            CNContactImageDataAvailableKey as CNKeyDescriptor
-        ]
+    func fetchContacts() async throws -> [RawContact] {
+        try await withCheckedThrowingContinuation { continuation in
+            DispatchQueue.global(qos: .userInitiated).async {
+                let store = CNContactStore()
+                let keys: [CNKeyDescriptor] = [
+                    CNContactIdentifierKey as CNKeyDescriptor,
+                    CNContactGivenNameKey as CNKeyDescriptor,
+                    CNContactFamilyNameKey as CNKeyDescriptor,
+                    CNContactPhoneNumbersKey as CNKeyDescriptor,
+                    CNContactImageDataKey as CNKeyDescriptor,
+                    CNContactImageDataAvailableKey as CNKeyDescriptor
+                ]
 
-        let request = CNContactFetchRequest(keysToFetch: keys)
-        var result: [RawContact] = []
+                let request = CNContactFetchRequest(keysToFetch: keys)
+                var result: [RawContact] = []
 
-        try store.enumerateContacts(with: request) { contact, _ in
-            let firstPhone = contact.phoneNumbers.first?.value.stringValue
-            let avatar = contact.imageDataAvailable ? contact.imageData : nil
+                do {
+                    try store.enumerateContacts(with: request) { contact, _ in
+                        let firstPhone = contact.phoneNumbers.first?.value.stringValue
+                        let avatar = contact.imageDataAvailable ? contact.imageData : nil
 
-            result.append(
-                RawContact(
-                    id: contact.identifier,
-                    givenName: contact.givenName,
-                    familyName: contact.familyName,
-                    phoneNumber: firstPhone,
-                    avatarData: avatar
-                )
-            )
+                        result.append(
+                            RawContact(
+                                id: contact.identifier,
+                                givenName: contact.givenName,
+                                familyName: contact.familyName,
+                                phoneNumber: firstPhone,
+                                avatarData: avatar
+                            )
+                        )
+                    }
+
+                    continuation.resume(returning: result)
+                } catch {
+                    continuation.resume(throwing: error)
+                }
+            }
         }
-
-        return result
     }
 }
