@@ -1,4 +1,4 @@
-﻿import Contacts
+import Contacts
 import Foundation
 
 protocol ContactsServiceProtocol {
@@ -10,14 +10,14 @@ struct RawContact: Equatable {
     let id: String
     let givenName: String
     let familyName: String
-    let phoneNumber: String?
+    let phoneNumbers: [String]
     let avatarData: Data?
 }
 
 final class ContactsService: ContactsServiceProtocol {
     func requestAccess() async throws -> Bool {
         let store = CNContactStore()
-        try await withCheckedThrowingContinuation { continuation in
+        return try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Bool, Error>) in
             store.requestAccess(for: .contacts) { granted, error in
                 if let error {
                     continuation.resume(throwing: error)
@@ -29,7 +29,7 @@ final class ContactsService: ContactsServiceProtocol {
     }
 
     func fetchContacts() async throws -> [RawContact] {
-        try await withCheckedThrowingContinuation { continuation in
+        return try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<[RawContact], Error>) in
             DispatchQueue.global(qos: .userInitiated).async {
                 let store = CNContactStore()
                 let keys: [CNKeyDescriptor] = [
@@ -46,7 +46,7 @@ final class ContactsService: ContactsServiceProtocol {
 
                 do {
                     try store.enumerateContacts(with: request) { contact, _ in
-                        let firstPhone = contact.phoneNumbers.first?.value.stringValue
+                        let phones = contact.phoneNumbers.map { $0.value.stringValue }
                         let avatar = contact.imageDataAvailable ? contact.imageData : nil
 
                         result.append(
@@ -54,7 +54,7 @@ final class ContactsService: ContactsServiceProtocol {
                                 id: contact.identifier,
                                 givenName: contact.givenName,
                                 familyName: contact.familyName,
-                                phoneNumber: firstPhone,
+                                phoneNumbers: phones,
                                 avatarData: avatar
                             )
                         )

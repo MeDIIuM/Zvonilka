@@ -1,4 +1,4 @@
-﻿import SwiftUI
+import SwiftUI
 
 struct ContactsGridView: View {
     @StateObject var viewModel: ContactsGridViewModel
@@ -13,6 +13,9 @@ struct ContactsGridView: View {
         }
         .task {
             await viewModel.requestAccessAndLoad()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
+            viewModel.refresh()
         }
         .sheet(isPresented: $isSettingsPresented) {
             SettingsView(
@@ -74,8 +77,8 @@ struct ContactsGridView: View {
         ScrollView {
             LazyVGrid(columns: gridColumns, spacing: 12) {
                 ForEach(viewModel.filteredContacts) { contact in
-                    ContactGridCard(contact: contact) {
-                        call(contact)
+                    ContactGridCard(contact: contact) { phoneNumber in
+                        call(contact, phoneNumber: phoneNumber)
                     }
                 }
             }
@@ -83,6 +86,7 @@ struct ContactsGridView: View {
             .padding(.top, 8)
             .padding(.bottom, 16)
         }
+        .scrollDismissesKeyboard(.immediately)
     }
 
     private var permissionDeniedView: some View {
@@ -115,12 +119,9 @@ struct ContactsGridView: View {
         [GridItem(.adaptive(minimum: 142, maximum: 220), spacing: 12)]
     }
 
-    private func call(_ contact: ContactItem) {
-        guard let number = contact.phoneNumber else { return }
-
-        viewModel.registerOutgoingTap(for: contact)
-
-        let digits = number.filter { "+0123456789".contains($0) }
+    private func call(_ contact: ContactItem, phoneNumber: String) {
+        viewModel.registerOutgoingTap(for: contact, phoneNumber: phoneNumber)
+        let digits = phoneNumber.filter { "+0123456789".contains($0) }
         guard let url = URL(string: "tel://\(digits)") else { return }
         openURL(url)
     }

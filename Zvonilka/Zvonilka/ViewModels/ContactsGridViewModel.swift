@@ -1,4 +1,4 @@
-﻿import Foundation
+import Foundation
 import Combine
 
 @MainActor
@@ -52,8 +52,7 @@ final class ContactsGridViewModel: ObservableObject {
         }
     }
 
-    func registerOutgoingTap(for contact: ContactItem) {
-        guard let phoneNumber = contact.phoneNumber else { return }
+    func registerOutgoingTap(for contact: ContactItem, phoneNumber: String) {
         let key = statKey(contactID: contact.id, phoneNumber: phoneNumber)
         statsStore.incrementCall(for: key)
         refresh()
@@ -73,7 +72,7 @@ final class ContactsGridViewModel: ObservableObject {
                     id: raw.id,
                     givenName: raw.givenName,
                     familyName: raw.familyName,
-                    phoneNumber: raw.phoneNumber,
+                    phoneNumbers: raw.phoneNumbers,
                     avatarData: raw.avatarData,
                     outgoingCallsCount: callsCount(for: raw)
                 )
@@ -83,9 +82,9 @@ final class ContactsGridViewModel: ObservableObject {
     }
 
     private func callsCount(for raw: RawContact) -> Int {
-        guard let phoneNumber = raw.phoneNumber else { return 0 }
-        let key = statKey(contactID: raw.id, phoneNumber: phoneNumber)
-        return statsStore.callsCount(for: key)
+        raw.phoneNumbers.reduce(0) { sum, number in
+            sum + statsStore.callsCount(for: statKey(contactID: raw.id, phoneNumber: number))
+        }
     }
 
     private func statKey(contactID: String, phoneNumber: String) -> String {
