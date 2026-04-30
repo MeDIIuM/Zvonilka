@@ -254,6 +254,7 @@
 				DEVELOPMENT_TEAM = FT3UF69C56;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = RCall;
 				INFOPLIST_KEY_NSContactsUsageDescription = "Нужен доступ к контактам для быстрого звонка";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -288,6 +289,7 @@
 				DEVELOPMENT_TEAM = FT3UF69C56;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = RCall;
 				INFOPLIST_KEY_NSContactsUsageDescription = "Нужен доступ к контактам для быстрого звонка";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
