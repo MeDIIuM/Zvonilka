@@ -1,5 +1,6 @@
 import Foundation
 import Combine
+import Contacts
 
 @MainActor
 final class ContactsGridViewModel: ObservableObject {
@@ -7,14 +8,21 @@ final class ContactsGridViewModel: ObservableObject {
     @Published var searchText: String = ""
     @Published var permissionDenied = false
     @Published var loadingErrorMessage: String?
+    @Published var isReloading = false
 
     private let contactsService: ContactsServiceProtocol
     private let statsStore: CallStatsStoreProtocol
     private var rawContacts: [RawContact] = []
+    private var cancellables = Set<AnyCancellable>()
 
     init(contactsService: ContactsServiceProtocol, statsStore: CallStatsStoreProtocol) {
         self.contactsService = contactsService
         self.statsStore = statsStore
+
+        NotificationCenter.default.publisher(for: .CNContactStoreDidChange)
+            .debounce(for: .milliseconds(300), scheduler: DispatchQueue.main)
+            .sink { [weak self] _ in self?.refresh() }
+            .store(in: &cancellables)
     }
 
     var filteredContacts: [ContactItem] {
@@ -44,18 +52,19 @@ final class ContactsGridViewModel: ObservableObject {
 
     func refresh() {
         Task {
+            isReloading = true
             do {
                 try await loadContacts()
             } catch {
                 loadingErrorMessage = "Ошибка обновления: \(error.localizedDescription)"
             }
+            isReloading = false
         }
     }
 
     func registerOutgoingTap(for contact: ContactItem, phoneNumber: String) {
         let key = statKey(contactID: contact.id, phoneNumber: phoneNumber)
         statsStore.incrementCall(for: key)
-        refresh()
     }
 
     func resetStatistics() {

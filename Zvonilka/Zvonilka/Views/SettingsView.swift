@@ -1,4 +1,4 @@
-﻿import SwiftUI
+import SwiftUI
 
 struct SettingsView: View {
     @AppStorage("zvonilka_theme_mode") private var themeModeRaw = ThemeMode.system.rawValue
@@ -39,9 +39,7 @@ struct SettingsView: View {
             .navigationTitle("Настройки")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Готово") {
-                        dismiss()
-                    }
+                    Button("Готово") { dismiss() }
                 }
             }
             .alert("Сбросить счётчики?", isPresented: $showConfirmAlert) {

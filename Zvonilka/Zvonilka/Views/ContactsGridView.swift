@@ -3,14 +3,19 @@ import SwiftUI
 struct ContactsGridView: View {
     @StateObject var viewModel: ContactsGridViewModel
     @Environment(\.openURL) private var openURL
+    @Environment(\.colorScheme) private var systemColorScheme
+    @AppStorage("zvonilka_theme_mode") private var themeModeRaw = ThemeMode.system.rawValue
     @State private var isSettingsPresented = false
+    @FocusState private var isSearchFocused: Bool
+    private let defaultPhoneStore = DefaultPhoneStore()
 
     var body: some View {
         NavigationStack {
             content
-                .background(Color(.systemBackground).ignoresSafeArea())
+                .background(appBackground.ignoresSafeArea())
                 .toolbar(.hidden, for: .navigationBar)
         }
+        .environment(\.colorScheme, effectiveColorScheme)
         .task {
             await viewModel.requestAccessAndLoad()
         }
@@ -18,16 +23,11 @@ struct ContactsGridView: View {
             viewModel.refresh()
         }
         .sheet(isPresented: $isSettingsPresented) {
-            SettingsView(
-                onResetStats: {
-                    viewModel.resetStatistics()
-                }
-            )
+            SettingsView(onResetStats: { viewModel.resetStatistics() })
+                .preferredColorScheme(effectiveColorScheme)
         }
         .alert("Ошибка", isPresented: errorPresentedBinding) {
-            Button("OK") {
-                viewModel.loadingErrorMessage = nil
-            }
+            Button("OK") { viewModel.loadingErrorMessage = nil }
         } message: {
             Text(viewModel.loadingErrorMessage ?? "")
         }
@@ -43,43 +43,68 @@ struct ContactsGridView: View {
                 Spacer()
                 permissionDeniedView
                 Spacer()
+            } else if viewModel.filteredContacts.isEmpty && !viewModel.searchText.trimmingCharacters(in: .whitespaces).isEmpty {
+                Spacer()
+                emptySearchView
+                Spacer()
             } else {
                 gridContent
+                    .blur(radius: viewModel.isReloading ? 12 : 0)
+                    .animation(.easeInOut(duration: 0.25), value: viewModel.isReloading)
             }
         }
     }
 
     private var topBar: some View {
         HStack(spacing: 10) {
-            TextField("Поиск по имени или номеру", text: $viewModel.searchText)
-                .textInputAutocapitalization(.never)
-                .disableAutocorrection(true)
-                .padding(.vertical, 10)
-                .padding(.horizontal, 12)
-                .background(Color(.secondarySystemBackground))
-                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            HStack(spacing: 8) {
+                Image(systemName: "magnifyingglass")
+                    .font(.system(size: 15, weight: .medium))
+                    .foregroundStyle(.secondary)
 
-            Button {
-                isSettingsPresented = true
-            } label: {
-                Image(systemName: "gearshape.fill")
-                    .font(.system(size: 18, weight: .semibold))
-                    .frame(width: 42, height: 42)
-                    .background(Color(.secondarySystemBackground))
-                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                TextField("Поиск по имени или номеру", text: $viewModel.searchText)
+                    .textInputAutocapitalization(.never)
+                    .disableAutocorrection(true)
+                    .focused($isSearchFocused)
             }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Настройки")
+            .padding(.vertical, 10)
+            .padding(.horizontal, 12)
+            .adaptiveGlass(cornerRadius: 12)
+
+            if isSearchFocused {
+                Button("Отмена") {
+                    viewModel.searchText = ""
+                    isSearchFocused = false
+                }
+                .transition(.move(edge: .trailing).combined(with: .opacity))
+            } else {
+                Button {
+                    isSettingsPresented = true
+                } label: {
+                    Image(systemName: "gearshape.fill")
+                        .font(.system(size: 18, weight: .semibold))
+                        .frame(width: 42, height: 42)
+                        .adaptiveGlass(cornerRadius: 12)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Настройки")
+                .transition(.move(edge: .trailing).combined(with: .opacity))
+            }
         }
+        .animation(.spring(response: 0.3, dampingFraction: 0.8), value: isSearchFocused)
     }
 
     private var gridContent: some View {
         ScrollView {
-            LazyVGrid(columns: gridColumns, spacing: 12) {
+            MasonryLayout(columns: 3, unitHeight: 68, spacing: 10) {
                 ForEach(viewModel.filteredContacts) { contact in
-                    ContactGridCard(contact: contact) { phoneNumber in
-                        call(contact, phoneNumber: phoneNumber)
-                    }
+                    ContactGridCard(
+                        contact: contact,
+                        defaultPhoneStore: defaultPhoneStore,
+                        callAction: { phoneNumber in call(contact, phoneNumber: phoneNumber) }
+                    )
+                    .environment(\.colorScheme, effectiveColorScheme)
+                    .layoutValue(key: SpanKey.self, value: contact.avatarData != nil ? 2 : 1)
                 }
             }
             .padding(.horizontal, 12)
@@ -89,6 +114,20 @@ struct ContactsGridView: View {
         .scrollDismissesKeyboard(.immediately)
     }
 
+    private var emptySearchView: some View {
+        VStack(spacing: 12) {
+            Image(systemName: "person.slash")
+                .font(.system(size: 48, weight: .light))
+                .foregroundStyle(.secondary)
+            Text("Контакты не найдены")
+                .font(.headline)
+            Text("Попробуйте изменить запрос")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+        }
+        .padding()
+    }
+
     private var permissionDeniedView: some View {
         VStack(spacing: 12) {
             Text("Нет доступа к контактам")
@@ -96,10 +135,8 @@ struct ContactsGridView: View {
             Text("Разрешите доступ к контактам в настройках iOS.")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
-            Button("Обновить") {
-                viewModel.refresh()
-            }
-            .buttonStyle(.borderedProminent)
+            Button("Обновить") { viewModel.refresh() }
+                .buttonStyle(.borderedProminent)
         }
         .padding()
     }
@@ -107,16 +144,38 @@ struct ContactsGridView: View {
     private var errorPresentedBinding: Binding<Bool> {
         Binding(
             get: { viewModel.loadingErrorMessage != nil },
-            set: { newValue in
-                if !newValue {
-                    viewModel.loadingErrorMessage = nil
-                }
-            }
+            set: { if !$0 { viewModel.loadingErrorMessage = nil } }
         )
     }
 
-    private var gridColumns: [GridItem] {
-        [GridItem(.adaptive(minimum: 142, maximum: 220), spacing: 12)]
+    private var effectiveColorScheme: ColorScheme {
+        switch ThemeMode(rawValue: themeModeRaw) ?? .system {
+        case .light:  return .light
+        case .dark:   return .dark
+        case .system: return systemColorScheme
+        }
+    }
+
+    private var appBackground: LinearGradient {
+        effectiveColorScheme == .dark
+            ? LinearGradient(
+                stops: [
+                    .init(color: Color(red: 0.04, green: 0.08, blue: 0.20), location: 0.0),
+                    .init(color: Color(red: 0.05, green: 0.14, blue: 0.22), location: 0.45),
+                    .init(color: Color(red: 0.10, green: 0.08, blue: 0.06), location: 1.0)
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+              )
+            : LinearGradient(
+                stops: [
+                    .init(color: Color(red: 0.55, green: 0.75, blue: 1.0), location: 0.0),
+                    .init(color: Color(red: 0.70, green: 0.88, blue: 0.95), location: 0.45),
+                    .init(color: Color(red: 0.88, green: 0.85, blue: 0.78), location: 1.0)
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+              )
     }
 
     private func call(_ contact: ContactItem, phoneNumber: String) {
@@ -126,6 +185,3 @@ struct ContactsGridView: View {
         openURL(url)
     }
 }
-
-
-
