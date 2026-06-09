@@ -26,16 +26,25 @@ private struct ContactEditRepresentable: UIViewControllerRepresentable {
         let vc = CNContactViewController(for: contact)
         vc.delegate = context.coordinator
         vc.allowsEditing = true
+        vc.navigationItem.leftBarButtonItem = UIBarButtonItem(
+            title: "Закрыть",
+            style: .plain,
+            target: context.coordinator,
+            action: #selector(Coordinator.closeTapped)
+        )
         return UINavigationController(rootViewController: vc)
     }
 
     func updateUIViewController(_ uiViewController: UINavigationController, context: Context) {}
 
-    class Coordinator: NSObject, CNContactViewControllerDelegate {
+    final class Coordinator: NSObject, CNContactViewControllerDelegate {
         let onComplete: () -> Void
         init(onComplete: @escaping () -> Void) { self.onComplete = onComplete }
 
-        func contactViewController(_ viewController: CNContactViewController, didCompleteWith contact: CNContact?) {
+        @objc func closeTapped() { onComplete() }
+
+        func contactViewController(_ viewController: CNContactViewController,
+                                   didCompleteWith contact: CNContact?) {
             onComplete()
         }
     }

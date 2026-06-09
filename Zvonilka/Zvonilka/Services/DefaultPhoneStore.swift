@@ -7,6 +7,12 @@ final class DefaultPhoneStore {
         storage[contactID]
     }
 
+    func setDefaultPhone(_ phone: String, for contactID: String) {
+        var current = storage
+        current[contactID] = phone
+        UserDefaults.standard.set(current, forKey: key)
+    }
+
     func toggleDefaultPhone(_ phone: String, for contactID: String) {
         var current = storage
         if current[contactID] == phone {

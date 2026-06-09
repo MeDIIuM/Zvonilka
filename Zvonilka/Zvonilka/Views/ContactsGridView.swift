@@ -1,4 +1,5 @@
 import SwiftUI
+import Contacts
 
 struct ContactsGridView: View {
     @StateObject var viewModel: ContactsGridViewModel
@@ -6,6 +7,8 @@ struct ContactsGridView: View {
     @Environment(\.colorScheme) private var systemColorScheme
     @AppStorage("zvonilka_theme_mode") private var themeModeRaw = ThemeMode.system.rawValue
     @State private var isSettingsPresented = false
+    @State private var isNewContactPresented = false
+    @State private var editingContactID: String? = nil
     @FocusState private var isSearchFocused: Bool
     private let defaultPhoneStore = DefaultPhoneStore()
 
@@ -25,6 +28,17 @@ struct ContactsGridView: View {
         .sheet(isPresented: $isSettingsPresented) {
             SettingsView(onResetStats: { viewModel.resetStatistics() })
                 .preferredColorScheme(effectiveColorScheme)
+        }
+        .sheet(isPresented: $isNewContactPresented) {
+            NewContactView(phoneNumber: viewModel.searchText.trimmingCharacters(in: .whitespacesAndNewlines))
+        }
+        .sheet(isPresented: Binding(
+            get: { editingContactID != nil },
+            set: { if !$0 { editingContactID = nil } }
+        )) {
+            if let id = editingContactID {
+                ContactEditView(contactID: id)
+            }
         }
         .alert("Ошибка", isPresented: errorPresentedBinding) {
             Button("OK") { viewModel.loadingErrorMessage = nil }
@@ -95,37 +109,73 @@ struct ContactsGridView: View {
     }
 
     private var gridContent: some View {
-        ScrollView {
-            MasonryLayout(columns: 3, unitHeight: 68, spacing: 10) {
-                ForEach(viewModel.filteredContacts) { contact in
-                    ContactGridCard(
-                        contact: contact,
-                        defaultPhoneStore: defaultPhoneStore,
-                        callAction: { phoneNumber in call(contact, phoneNumber: phoneNumber) }
-                    )
-                    .environment(\.colorScheme, effectiveColorScheme)
-                    .layoutValue(key: SpanKey.self, value: contact.avatarData != nil ? 2 : 1)
-                }
-            }
-            .padding(.horizontal, 12)
-            .padding(.top, 8)
-            .padding(.bottom, 16)
-        }
-        .scrollDismissesKeyboard(.immediately)
+        ContactsCollectionView(
+            contacts: viewModel.filteredContacts,
+            colorScheme: effectiveColorScheme,
+            defaultPhoneStore: defaultPhoneStore,
+            callAction: { contact, phoneNumber in call(contact, phoneNumber: phoneNumber) },
+            editAction: { id in editingContactID = id }
+        )
     }
 
     private var emptySearchView: some View {
-        VStack(spacing: 12) {
-            Image(systemName: "person.slash")
-                .font(.system(size: 48, weight: .light))
-                .foregroundStyle(.secondary)
-            Text("Контакты не найдены")
-                .font(.headline)
-            Text("Попробуйте изменить запрос")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
+        VStack(spacing: 16) {
+            if viewModel.isPhoneNumberQuery {
+                let number = viewModel.searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+                Image(systemName: "phone.circle")
+                    .font(.system(size: 52, weight: .light))
+                    .foregroundStyle(.secondary)
+                Text("Контакт не найден")
+                    .font(.headline)
+                Button {
+                    callRawNumber(number)
+                } label: {
+                    Label("Позвонить на \(number)", systemImage: "phone.fill")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .padding(.horizontal, 32)
+                Button {
+                    isNewContactPresented = true
+                } label: {
+                    Label("Создать контакт", systemImage: "person.badge.plus")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
+                .padding(.horizontal, 32)
+            } else {
+                Image(systemName: "person.slash")
+                    .font(.system(size: 48, weight: .light))
+                    .foregroundStyle(.secondary)
+                Text("Контакты не найдены")
+                    .font(.headline)
+                Text("Попробуйте изменить запрос")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
         }
         .padding()
+    }
+
+    private func callRawNumber(_ number: String) {
+        let digits = number.filter { "+0123456789".contains($0) }
+        guard let url = URL(string: "tel://\(digits)") else { return }
+        openURL(url)
+        createContact(name: number, phone: digits)
+    }
+
+    private func createContact(name: String, phone: String) {
+        Task.detached(priority: .utility) {
+            let contact = CNMutableContact()
+            contact.givenName = name
+            contact.phoneNumbers = [CNLabeledValue(
+                label: CNLabelPhoneNumberMobile,
+                value: CNPhoneNumber(stringValue: phone)
+            )]
+            let request = CNSaveRequest()
+            request.add(contact, toContainerWithIdentifier: nil)
+            try? CNContactStore().execute(request)
+        }
     }
 
     private var permissionDeniedView: some View {

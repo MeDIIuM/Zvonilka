@@ -5,7 +5,7 @@ struct ContactItem: Identifiable, Equatable {
     let givenName: String
     let familyName: String
     let phoneNumbers: [String]
-    let avatarData: Data?
+    let hasAvatar: Bool
     let outgoingCallsCount: Int
 
     var phoneNumber: String? { phoneNumbers.first }
@@ -39,14 +39,4 @@ struct ContactItem: Identifiable, Equatable {
     }
 
     var hasCallableNumber: Bool { !phoneNumbers.isEmpty }
-
-    var initials: String {
-        let source = [givenName, familyName]
-            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-            .filter { !$0.isEmpty }
-
-        let letters = source.prefix(2).compactMap { $0.first }
-        if letters.isEmpty { return "?" }
-        return String(letters).uppercased()
-    }
 }

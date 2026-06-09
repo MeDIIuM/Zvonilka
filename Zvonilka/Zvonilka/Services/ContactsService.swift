@@ -6,12 +6,33 @@ protocol ContactsServiceProtocol {
     func fetchContacts() async throws -> [RawContact]
 }
 
-struct RawContact: Equatable {
+struct RawContact: Equatable, Codable {
     let id: String
     let givenName: String
     let familyName: String
     let phoneNumbers: [String]
     let avatarData: Data?
+    let imageDataAvailable: Bool
+
+    init(id: String, givenName: String, familyName: String,
+         phoneNumbers: [String], avatarData: Data?, imageDataAvailable: Bool = false) {
+        self.id = id
+        self.givenName = givenName
+        self.familyName = familyName
+        self.phoneNumbers = phoneNumbers
+        self.avatarData = avatarData
+        self.imageDataAvailable = imageDataAvailable
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(String.self, forKey: .id)
+        givenName = try c.decode(String.self, forKey: .givenName)
+        familyName = try c.decode(String.self, forKey: .familyName)
+        phoneNumbers = try c.decode([String].self, forKey: .phoneNumbers)
+        avatarData = try c.decodeIfPresent(Data.self, forKey: .avatarData)
+        imageDataAvailable = try c.decodeIfPresent(Bool.self, forKey: .imageDataAvailable) ?? false
+    }
 }
 
 final class ContactsService: ContactsServiceProtocol {
@@ -55,7 +76,8 @@ final class ContactsService: ContactsServiceProtocol {
                                 givenName: contact.givenName,
                                 familyName: contact.familyName,
                                 phoneNumbers: phones,
-                                avatarData: avatar
+                                avatarData: avatar,
+                                imageDataAvailable: contact.imageDataAvailable
                             )
                         )
                     }
