@@ -1,4 +1,4 @@
-﻿import Contacts
+import Contacts
 import Foundation
 
 protocol ContactsServiceProtocol {
@@ -6,18 +6,39 @@ protocol ContactsServiceProtocol {
     func fetchContacts() async throws -> [RawContact]
 }
 
-struct RawContact: Equatable {
+struct RawContact: Equatable, Codable {
     let id: String
     let givenName: String
     let familyName: String
-    let phoneNumber: String?
+    let phoneNumbers: [String]
     let avatarData: Data?
+    let imageDataAvailable: Bool
+
+    init(id: String, givenName: String, familyName: String,
+         phoneNumbers: [String], avatarData: Data?, imageDataAvailable: Bool = false) {
+        self.id = id
+        self.givenName = givenName
+        self.familyName = familyName
+        self.phoneNumbers = phoneNumbers
+        self.avatarData = avatarData
+        self.imageDataAvailable = imageDataAvailable
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(String.self, forKey: .id)
+        givenName = try c.decode(String.self, forKey: .givenName)
+        familyName = try c.decode(String.self, forKey: .familyName)
+        phoneNumbers = try c.decode([String].self, forKey: .phoneNumbers)
+        avatarData = try c.decodeIfPresent(Data.self, forKey: .avatarData)
+        imageDataAvailable = try c.decodeIfPresent(Bool.self, forKey: .imageDataAvailable) ?? false
+    }
 }
 
 final class ContactsService: ContactsServiceProtocol {
     func requestAccess() async throws -> Bool {
         let store = CNContactStore()
-        try await withCheckedThrowingContinuation { continuation in
+        return try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Bool, Error>) in
             store.requestAccess(for: .contacts) { granted, error in
                 if let error {
                     continuation.resume(throwing: error)
@@ -29,7 +50,7 @@ final class ContactsService: ContactsServiceProtocol {
     }
 
     func fetchContacts() async throws -> [RawContact] {
-        try await withCheckedThrowingContinuation { continuation in
+        return try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<[RawContact], Error>) in
             DispatchQueue.global(qos: .userInitiated).async {
                 let store = CNContactStore()
                 let keys: [CNKeyDescriptor] = [
@@ -46,7 +67,7 @@ final class ContactsService: ContactsServiceProtocol {
 
                 do {
                     try store.enumerateContacts(with: request) { contact, _ in
-                        let firstPhone = contact.phoneNumbers.first?.value.stringValue
+                        let phones = contact.phoneNumbers.map { $0.value.stringValue }
                         let avatar = contact.imageDataAvailable ? contact.imageData : nil
 
                         result.append(
@@ -54,8 +75,9 @@ final class ContactsService: ContactsServiceProtocol {
                                 id: contact.identifier,
                                 givenName: contact.givenName,
                                 familyName: contact.familyName,
-                                phoneNumber: firstPhone,
-                                avatarData: avatar
+                                phoneNumbers: phones,
+                                avatarData: avatar,
+                                imageDataAvailable: contact.imageDataAvailable
                             )
                         )
                     }

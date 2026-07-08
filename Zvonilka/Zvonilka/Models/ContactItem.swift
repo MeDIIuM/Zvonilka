@@ -1,12 +1,14 @@
-﻿import Foundation
+import Foundation
 
 struct ContactItem: Identifiable, Equatable {
     let id: String
     let givenName: String
     let familyName: String
-    let phoneNumber: String?
-    let avatarData: Data?
+    let phoneNumbers: [String]
+    let hasAvatar: Bool
     let outgoingCallsCount: Int
+
+    var phoneNumber: String? { phoneNumbers.first }
 
     var displayName: String {
         let parts = [givenName, familyName].filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
@@ -36,18 +38,5 @@ struct ContactItem: Identifiable, Equatable {
         phoneNumber?.filter(\.isNumber) ?? ""
     }
 
-    var hasCallableNumber: Bool {
-        guard let phoneNumber else { return false }
-        return !phoneNumber.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-    }
-
-    var initials: String {
-        let source = [givenName, familyName]
-            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-            .filter { !$0.isEmpty }
-
-        let letters = source.prefix(2).compactMap { $0.first }
-        if letters.isEmpty { return "?" }
-        return String(letters).uppercased()
-    }
+    var hasCallableNumber: Bool { !phoneNumbers.isEmpty }
 }
