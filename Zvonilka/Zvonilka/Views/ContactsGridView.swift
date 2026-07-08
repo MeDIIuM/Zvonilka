@@ -80,6 +80,19 @@ struct ContactsGridView: View {
                     .textInputAutocapitalization(.never)
                     .disableAutocorrection(true)
                     .focused($isSearchFocused)
+
+                if !viewModel.searchText.isEmpty {
+                    Button {
+                        viewModel.searchText = ""
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 16))
+                            .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Очистить")
+                    .transition(.scale.combined(with: .opacity))
+                }
             }
             .padding(.vertical, 10)
             .padding(.horizontal, 12)
@@ -106,6 +119,7 @@ struct ContactsGridView: View {
             }
         }
         .animation(.spring(response: 0.3, dampingFraction: 0.8), value: isSearchFocused)
+        .animation(.spring(response: 0.3, dampingFraction: 0.8), value: viewModel.searchText.isEmpty)
     }
 
     private var gridContent: some View {
