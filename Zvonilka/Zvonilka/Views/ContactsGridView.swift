@@ -23,7 +23,7 @@ struct ContactsGridView: View {
             await viewModel.requestAccessAndLoad()
         }
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
-            viewModel.refresh()
+            viewModel.syncAuthorizationState()
         }
         .sheet(isPresented: $isSettingsPresented) {
             SettingsView(onResetStats: { viewModel.resetStatistics() })
@@ -57,6 +57,12 @@ struct ContactsGridView: View {
                 Spacer()
                 permissionDeniedView
                 Spacer()
+            } else if viewModel.contacts.isEmpty
+                        && viewModel.searchText.trimmingCharacters(in: .whitespaces).isEmpty
+                        && viewModel.isContactsAuthorized {
+                Spacer()
+                emptyContactsView
+                Spacer()
             } else if viewModel.filteredContacts.isEmpty && !viewModel.searchText.trimmingCharacters(in: .whitespaces).isEmpty {
                 Spacer()
                 emptySearchView
@@ -71,32 +77,36 @@ struct ContactsGridView: View {
 
     private var topBar: some View {
         HStack(spacing: 10) {
-            HStack(spacing: 8) {
-                Image(systemName: "magnifyingglass")
-                    .font(.system(size: 15, weight: .medium))
-                    .foregroundStyle(.secondary)
+            if !viewModel.permissionDenied && !viewModel.contacts.isEmpty {
+                HStack(spacing: 8) {
+                    Image(systemName: "magnifyingglass")
+                        .font(.system(size: 15, weight: .medium))
+                        .foregroundStyle(.secondary)
 
-                TextField("Поиск по имени или номеру", text: $viewModel.searchText)
-                    .textInputAutocapitalization(.never)
-                    .disableAutocorrection(true)
-                    .focused($isSearchFocused)
+                    TextField("Поиск по имени или номеру", text: $viewModel.searchText)
+                        .textInputAutocapitalization(.never)
+                        .disableAutocorrection(true)
+                        .focused($isSearchFocused)
 
-                if !viewModel.searchText.isEmpty {
-                    Button {
-                        viewModel.searchText = ""
-                    } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.system(size: 16))
-                            .foregroundStyle(.secondary)
+                    if !viewModel.searchText.isEmpty {
+                        Button {
+                            viewModel.searchText = ""
+                        } label: {
+                            Image(systemName: "xmark.circle.fill")
+                                .font(.system(size: 16))
+                                .foregroundStyle(.secondary)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Очистить")
+                        .transition(.scale.combined(with: .opacity))
                     }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("Очистить")
-                    .transition(.scale.combined(with: .opacity))
                 }
+                .padding(.vertical, 10)
+                .padding(.horizontal, 12)
+                .adaptiveGlass(cornerRadius: 12)
+            } else {
+                Spacer()
             }
-            .padding(.vertical, 10)
-            .padding(.horizontal, 12)
-            .adaptiveGlass(cornerRadius: 12)
 
             if isSearchFocused {
                 Button("Отмена") {
@@ -194,15 +204,41 @@ struct ContactsGridView: View {
 
     private var permissionDeniedView: some View {
         VStack(spacing: 12) {
+            Image(systemName: "lock.circle")
+                .font(.system(size: 48, weight: .light))
+                .foregroundStyle(.secondary)
             Text("Нет доступа к контактам")
                 .font(.headline)
             Text("Разрешите доступ к контактам в настройках iOS.")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
-            Button("Обновить") { viewModel.refresh() }
+                .multilineTextAlignment(.center)
+            Button("Открыть настройки") { openAppSettings() }
                 .buttonStyle(.borderedProminent)
         }
-        .padding()
+        .padding(.horizontal, 32)
+    }
+
+    private var emptyContactsView: some View {
+        VStack(spacing: 12) {
+            Image(systemName: "person.crop.circle.badge.questionmark")
+                .font(.system(size: 48, weight: .light))
+                .foregroundStyle(.secondary)
+            Text("Нет доступных контактов")
+                .font(.headline)
+            Text("Приложению доступны не все контакты. Откройте настройки, чтобы разрешить доступ ко всем контактам.")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+            Button("Открыть настройки") { openAppSettings() }
+                .buttonStyle(.borderedProminent)
+        }
+        .padding(.horizontal, 32)
+    }
+
+    private func openAppSettings() {
+        guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
+        openURL(url)
     }
 
     private var errorPresentedBinding: Binding<Bool> {

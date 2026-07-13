@@ -37,16 +37,33 @@ struct RawContact: Equatable, Codable {
 
 final class ContactsService: ContactsServiceProtocol {
     func requestAccess() async throws -> Bool {
+        let status = CNContactStore.authorizationStatus(for: .contacts)
+
+        // Уже выдан полный доступ.
+        if status == .authorized { return true }
+        // iOS 18+: ограниченный доступ тоже пригоден — enumerate вернёт выбранные контакты.
+        if #available(iOS 18.0, *), status == .limited { return true }
+        // Доступ явно запрещён.
+        if status == .denied || status == .restricted { return false }
+
+        // .notDetermined — показываем системный запрос.
         let store = CNContactStore()
-        return try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Bool, Error>) in
+        let granted: Bool = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Bool, Error>) in
             store.requestAccess(for: .contacts) { granted, error in
                 if let error {
                     continuation.resume(throwing: error)
-                    return
+                } else {
+                    continuation.resume(returning: granted)
                 }
-                continuation.resume(returning: granted)
             }
         }
+        if granted { return true }
+        // На iOS 18+ выбор «Ограниченный доступ» может вернуть granted == false,
+        // но контакты при этом доступны — перепроверяем реальный статус.
+        if #available(iOS 18.0, *) {
+            return CNContactStore.authorizationStatus(for: .contacts) == .limited
+        }
+        return false
     }
 
     func fetchContacts() async throws -> [RawContact] {

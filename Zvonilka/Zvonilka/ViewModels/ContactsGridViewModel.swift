@@ -46,6 +46,13 @@ final class ContactsGridViewModel: ObservableObject {
         }
     }
 
+    var isContactsAuthorized: Bool {
+        let status = CNContactStore.authorizationStatus(for: .contacts)
+        if status == .authorized { return true }
+        if #available(iOS 18.0, *), status == .limited { return true }
+        return false
+    }
+
     func requestAccessAndLoad() async {
         if let cached = await ContactsCacheStore.shared.load() {
             rawContacts = cached
@@ -53,13 +60,25 @@ final class ContactsGridViewModel: ObservableObject {
         }
 
         do {
-            let granted = try await contactsService.requestAccess()
-            permissionDenied = !granted
-            guard granted else { return }
-            try await loadContacts()
+            _ = try await contactsService.requestAccess()
         } catch {
             loadingErrorMessage = "Ошибка доступа к контактам: \(error.localizedDescription)"
         }
+        syncAuthorizationState()
+    }
+
+    /// Приводит состояние экрана к фактическому статусу доступа и грузит контакты, если доступ есть.
+    func syncAuthorizationState() {
+        let status = CNContactStore.authorizationStatus(for: .contacts)
+        permissionDenied = (status == .denied || status == .restricted)
+        guard isContactsAuthorized else {
+            // Доступ отозван/запрещён — не держим устаревшие контакты в памяти и кэше.
+            contacts = []
+            rawContacts = []
+            ContactsCacheStore.shared.save([])
+            return
+        }
+        refresh()
     }
 
     func refresh() {
