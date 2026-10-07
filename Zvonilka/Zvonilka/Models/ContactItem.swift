@@ -1,12 +1,13 @@
 import Foundation
 
-struct ContactItem: Identifiable, Equatable {
+nonisolated struct ContactItem: Identifiable, Equatable, Sendable {
     let id: String
     let givenName: String
     let familyName: String
     let phoneNumbers: [String]
     let hasAvatar: Bool
     let outgoingCallsCount: Int
+    var avatarVersion: Int = 0
 
     var phoneNumber: String? { phoneNumbers.first }
 

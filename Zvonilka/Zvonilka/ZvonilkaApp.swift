@@ -6,13 +6,21 @@ struct ZvonilkaApp: App {
 
     var body: some Scene {
         WindowGroup {
-            ContactsGridView(
-                viewModel: ContactsGridViewModel(
-                    contactsService: ContactsService(),
-                    statsStore: CallStatsStore()
-                )
-            )
-            .preferredColorScheme(ThemeMode(rawValue: themeModeRaw)?.colorScheme)
+            #if DEBUG
+            if ProcessInfo.processInfo.arguments.contains("--uitesting-call-flow") {
+                CallFlowUITestHost()
+            } else {
+                mainView
+            }
+            #else
+            mainView
+            #endif
         }
+    }
+
+    private var mainView: some View {
+        ContactsGridView(viewModel: ContactsGridViewModel(contactsService: ContactsService(),
+                                                       statsStore: CallStatsStore()))
+            .preferredColorScheme(ThemeMode(rawValue: themeModeRaw)?.colorScheme)
     }
 }

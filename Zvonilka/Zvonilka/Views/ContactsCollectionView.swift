@@ -115,6 +115,10 @@ final class ContactCardCell: UICollectionViewCell {
         let previousID = contactID
         contactID = contact.id
         self.onCall = onCall
+        isAccessibilityElement = true
+        accessibilityTraits = .button
+        accessibilityIdentifier = "contact-\(contact.id)"
+        accessibilityLabel = "\(contact.displayName), звонков: \(contact.outgoingCallsCount)"
 
         contentView.backgroundColor = UIColor.secondarySystemBackground.withAlphaComponent(0.85)
 
@@ -152,9 +156,10 @@ final class ContactCardCell: UICollectionViewCell {
                   let data = cn.imageData,
                   let full = UIImage(data: data) else { return }
             let thumb = full.avatarThumbnail()
-            AvatarCache.shared.store(thumb, for: id)
             await MainActor.run { [weak self] in
-                if self?.contactID == id { self?.avatarView.image = thumb }
+                // Загрузка, начатая раньше обновления фото, не должна затереть новый кэш.
+                if AvatarCache.shared.image(for: id) == nil { AvatarCache.shared.store(thumb, for: id) }
+                if self?.contactID == id { self?.avatarView.image = AvatarCache.shared.image(for: id) }
             }
         }
     }
@@ -234,27 +239,33 @@ struct ContactsCollectionView: UIViewRepresentable {
 
     func updateUIView(_ cv: UICollectionView, context: Context) {
         context.coordinator.parent = self
-        cv.overrideUserInterfaceStyle = colorScheme == .dark ? .dark : .light
+        let style: UIUserInterfaceStyle = colorScheme == .dark ? .dark : .light
+        if cv.overrideUserInterfaceStyle != style { cv.overrideUserInterfaceStyle = style }
 
         let layout = cv.collectionViewLayout as! MasonryCollectionLayout
         let newIDs = contacts.map(\.id)
 
-        if context.coordinator.lastIDs != newIDs {
-            context.coordinator.lastIDs = newIDs
-            context.coordinator.lastContacts = contacts
-            layout.contacts = contacts
-            layout.invalidateLayout()
-            cv.reloadData()
-        } else if context.coordinator.lastContacts != contacts {
-            let spansChanged = zip(context.coordinator.lastContacts, contacts)
-                .contains { $0.hasAvatar != $1.hasAvatar }
-            context.coordinator.lastContacts = contacts
-            if spansChanged {
+        UIView.performWithoutAnimation {
+            if context.coordinator.lastIDs != newIDs {
+                context.coordinator.lastIDs = newIDs
+                context.coordinator.lastContacts = contacts
                 layout.contacts = contacts
                 layout.invalidateLayout()
                 cv.reloadData()
-            } else {
-                context.coordinator.reconfigureVisibleCells(in: cv)
+                cv.layoutIfNeeded()
+            } else if context.coordinator.lastContacts != contacts {
+                let changes = zip(context.coordinator.lastContacts, contacts)
+                let spansChanged = changes.contains { $0.hasAvatar != $1.hasAvatar }
+                let changedIDs = Set(changes.filter { $0 != $1 }.map { $1.id })
+                context.coordinator.lastContacts = contacts
+                if spansChanged {
+                    layout.contacts = contacts
+                    layout.invalidateLayout()
+                    cv.reloadData()
+                } else {
+                    context.coordinator.reconfigureVisibleCells(in: cv, changedIDs: changedIDs)
+                }
+                cv.layoutIfNeeded()
             }
         }
     }
@@ -271,9 +282,10 @@ struct ContactsCollectionView: UIViewRepresentable {
 
         init(_ parent: ContactsCollectionView) { self.parent = parent }
 
-        func reconfigureVisibleCells(in cv: UICollectionView) {
+        func reconfigureVisibleCells(in cv: UICollectionView, changedIDs: Set<String>) {
             for ip in cv.indexPathsForVisibleItems {
                 guard ip.item < parent.contacts.count,
+                      changedIDs.contains(parent.contacts[ip.item].id),
                       let cell = cv.cellForItem(at: ip) as? ContactCardCell else { continue }
                 configureCell(cell, at: ip)
             }
@@ -366,7 +378,10 @@ struct ContactsCollectionView: UIViewRepresentable {
                             keysToFetch: [CNContactImageDataKey as CNKeyDescriptor]),
                           let data = cn.imageData,
                           let full = UIImage(data: data) else { return }
-                    AvatarCache.shared.store(full.avatarThumbnail(), for: id)
+                    let thumbnail = full.avatarThumbnail()
+                    await MainActor.run {
+                        if AvatarCache.shared.image(for: id) == nil { AvatarCache.shared.store(thumbnail, for: id) }
+                    }
                 }
             }
         }

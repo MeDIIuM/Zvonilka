@@ -6,8 +6,19 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXContainerItemProxy section */
+		A1000000000000000000000B /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8A6FB7F52F9F9D2F00AEB1F4 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 8A6FB7FC2F9F9D2F00AEB1F4;
+			remoteInfo = Zvonilka;
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXFileReference section */
 		8A6FB7FD2F9F9D2F00AEB1F4 /* Zvonilka.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Zvonilka.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		A10000000000000000000002 /* ZvonilkaUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; path = ZvonilkaUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -16,10 +27,22 @@
 			path = Zvonilka;
 			sourceTree = "<group>";
 		};
+		A10000000000000000000003 /* ZvonilkaUITests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = ZvonilkaUITests;
+			sourceTree = "<group>";
+		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		8A6FB7FA2F9F9D2F00AEB1F4 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A10000000000000000000005 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -33,6 +56,7 @@
 			isa = PBXGroup;
 			children = (
 				8A6FB7FF2F9F9D2F00AEB1F4 /* Zvonilka */,
+				A10000000000000000000003 /* ZvonilkaUITests */,
 				8A6FB7FE2F9F9D2F00AEB1F4 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -41,6 +65,7 @@
 			isa = PBXGroup;
 			children = (
 				8A6FB7FD2F9F9D2F00AEB1F4 /* Zvonilka.app */,
+				A10000000000000000000002 /* ZvonilkaUITests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -70,6 +95,27 @@
 			productReference = 8A6FB7FD2F9F9D2F00AEB1F4 /* Zvonilka.app */;
 			productType = "com.apple.product-type.application";
 		};
+		A10000000000000000000001 /* ZvonilkaUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A10000000000000000000009 /* Build configuration list for PBXNativeTarget "ZvonilkaUITests" */;
+			buildPhases = (
+				A10000000000000000000004 /* Sources */,
+				A10000000000000000000005 /* Frameworks */,
+				A10000000000000000000006 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				A1000000000000000000000A /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				A10000000000000000000003 /* ZvonilkaUITests */,
+			);
+			name = ZvonilkaUITests;
+			productName = ZvonilkaUITests;
+			productReference = A10000000000000000000002 /* ZvonilkaUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -82,6 +128,10 @@
 				TargetAttributes = {
 					8A6FB7FC2F9F9D2F00AEB1F4 = {
 						CreatedOnToolsVersion = 26.4.1;
+					};
+					A10000000000000000000001 = {
+						CreatedOnToolsVersion = 26.4.1;
+						TestTargetID = 8A6FB7FC2F9F9D2F00AEB1F4;
 					};
 				};
 			};
@@ -100,6 +150,7 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
+				A10000000000000000000001 /* ZvonilkaUITests */,
 				8A6FB7FC2F9F9D2F00AEB1F4 /* Zvonilka */,
 			);
 		};
@@ -107,6 +158,13 @@
 
 /* Begin PBXResourcesBuildPhase section */
 		8A6FB7FB2F9F9D2F00AEB1F4 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A10000000000000000000006 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -123,7 +181,22 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		A10000000000000000000004 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		A1000000000000000000000A /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 8A6FB7FC2F9F9D2F00AEB1F4 /* Zvonilka */;
+			targetProxy = A1000000000000000000000B /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		8A6FB8062F9F9D3000AEB1F4 /* Debug */ = {
@@ -315,6 +388,32 @@
 			};
 			name = Release;
 		};
+		A10000000000000000000007 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.6;
+				PRODUCT_BUNDLE_IDENTIFIER = netvoks.rcall.uitests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = Zvonilka;
+			};
+			name = Debug;
+		};
+		A10000000000000000000008 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.6;
+				PRODUCT_BUNDLE_IDENTIFIER = netvoks.rcall.uitests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = Zvonilka;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -332,6 +431,15 @@
 			buildConfigurations = (
 				8A6FB8092F9F9D3000AEB1F4 /* Debug */,
 				8A6FB80A2F9F9D3000AEB1F4 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		A10000000000000000000009 /* Build configuration list for PBXNativeTarget "ZvonilkaUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A10000000000000000000007 /* Debug */,
+				A10000000000000000000008 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

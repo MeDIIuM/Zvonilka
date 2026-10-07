@@ -20,7 +20,7 @@ final class AvatarCache {
 }
 
 extension UIImage {
-    func avatarThumbnail(size: CGFloat = 128) -> UIImage {
+    nonisolated func avatarThumbnail(size: CGFloat = 128) -> UIImage {
         let scale = max(size / self.size.width, size / self.size.height)
         let w = self.size.width * scale, h = self.size.height * scale
         return UIGraphicsImageRenderer(size: CGSize(width: size, height: size)).image { _ in

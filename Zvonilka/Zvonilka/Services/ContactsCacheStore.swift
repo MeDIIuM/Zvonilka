@@ -3,6 +3,7 @@ import Foundation
 final class ContactsCacheStore {
     static let shared = ContactsCacheStore()
     private init() {}
+    private let ioQueue = DispatchQueue(label: "zvonilka.contacts-cache", qos: .utility)
 
     private var cacheURL: URL {
         FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
@@ -10,24 +11,30 @@ final class ContactsCacheStore {
     }
 
     func save(_ contacts: [RawContact]) {
-        Task.detached(priority: .utility) {
+        let url = cacheURL
+        ioQueue.async {
             guard let data = try? PropertyListEncoder().encode(contacts) else { return }
-            try? data.write(to: self.cacheURL, options: .atomic)
+            try? data.write(to: url, options: .atomic)
         }
     }
 
     func clear() {
-        try? FileManager.default.removeItem(at: cacheURL)
+        let url = cacheURL
+        ioQueue.async { try? FileManager.default.removeItem(at: url) }
     }
 
     func load() async -> [RawContact]? {
-        await Task.detached(priority: .utility) {
-            guard
-                let data = try? Data(contentsOf: self.cacheURL),
-                let contacts = try? PropertyListDecoder().decode([RawContact].self, from: data)
-            else { return nil }
-            return contacts
-        }.value
+        let url = cacheURL
+        return await withCheckedContinuation { continuation in
+            ioQueue.async {
+                guard let data = try? Data(contentsOf: url),
+                      let contacts = try? PropertyListDecoder().decode([RawContact].self, from: data) else {
+                    continuation.resume(returning: nil)
+                    return
+                }
+                continuation.resume(returning: contacts)
+            }
+        }
     }
 
 }

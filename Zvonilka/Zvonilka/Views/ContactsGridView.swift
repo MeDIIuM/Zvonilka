@@ -1,8 +1,10 @@
 import SwiftUI
-import Contacts
 
 struct ContactsGridView: View {
     @StateObject var viewModel: ContactsGridViewModel
+    var openCallURL: (URL, @escaping (Bool) -> Void) -> Void = { url, completion in
+        UIApplication.shared.open(url, options: [:], completionHandler: completion)
+    }
     @Environment(\.openURL) private var openURL
     @Environment(\.colorScheme) private var systemColorScheme
     @AppStorage("zvonilka_theme_mode") private var themeModeRaw = ThemeMode.system.rawValue
@@ -22,8 +24,11 @@ struct ContactsGridView: View {
         .task {
             await viewModel.requestAccessAndLoad()
         }
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.didEnterBackgroundNotification)) { _ in
+            viewModel.applicationDidEnterBackground()
+        }
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
-            viewModel.syncAuthorizationState()
+            _ = viewModel.applicationDidBecomeActive()
         }
         .sheet(isPresented: $isSettingsPresented) {
             SettingsView(onResetStats: { viewModel.resetStatistics() })
@@ -69,8 +74,7 @@ struct ContactsGridView: View {
                 Spacer()
             } else {
                 gridContent
-                    .blur(radius: viewModel.isReloading ? 12 : 0)
-                    .animation(.easeInOut(duration: 0.25), value: viewModel.isReloading)
+                    .transaction { $0.disablesAnimations = true }
             }
         }
     }
@@ -182,24 +186,7 @@ struct ContactsGridView: View {
     }
 
     private func callRawNumber(_ number: String) {
-        let digits = number.filter { "+0123456789".contains($0) }
-        guard let url = URL(string: "tel://\(digits)") else { return }
-        openURL(url)
-        createContact(name: number, phone: digits)
-    }
-
-    private func createContact(name: String, phone: String) {
-        Task.detached(priority: .utility) {
-            let contact = CNMutableContact()
-            contact.givenName = name
-            contact.phoneNumbers = [CNLabeledValue(
-                label: CNLabelPhoneNumberMobile,
-                value: CNPhoneNumber(stringValue: phone)
-            )]
-            let request = CNSaveRequest()
-            request.add(contact, toContainerWithIdentifier: nil)
-            try? CNContactStore().execute(request)
-        }
+        initiateCall(phoneNumber: number)
     }
 
     private var permissionDeniedView: some View {
@@ -279,9 +266,18 @@ struct ContactsGridView: View {
     }
 
     private func call(_ contact: ContactItem, phoneNumber: String) {
-        viewModel.registerOutgoingTap(for: contact, phoneNumber: phoneNumber)
+        initiateCall(phoneNumber: phoneNumber, contact: contact)
+    }
+
+    private func initiateCall(phoneNumber: String, contact: ContactItem? = nil) {
         let digits = phoneNumber.filter { "+0123456789".contains($0) }
-        guard let url = URL(string: "tel://\(digits)") else { return }
-        openURL(url)
+        guard !digits.filter(\.isNumber).isEmpty,
+              let url = URL(string: "tel://\(digits)") else { return }
+        isSearchFocused = false
+        let requestID = UUID()
+        viewModel.beginCallAttempt(requestID: requestID, contact: contact, phoneNumber: phoneNumber)
+        openCallURL(url) { opened in
+            if !opened { viewModel.cancelCallAttempt(requestID: requestID) }
+        }
     }
 }

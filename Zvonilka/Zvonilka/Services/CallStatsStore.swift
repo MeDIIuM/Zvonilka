@@ -2,6 +2,7 @@
 
 protocol CallStatsStoreProtocol {
     func callsCount(for key: String) -> Int
+    func snapshot() -> [String: Int]
     func incrementCall(for key: String)
     func resetAll()
 }
@@ -16,6 +17,10 @@ final class CallStatsStore: CallStatsStoreProtocol {
 
     func callsCount(for key: String) -> Int {
         storage[key] ?? 0
+    }
+
+    func snapshot() -> [String: Int] {
+        storage
     }
 
     func incrementCall(for key: String) {
