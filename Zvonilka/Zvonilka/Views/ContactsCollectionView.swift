@@ -66,6 +66,7 @@ final class ContactCardCell: UICollectionViewCell {
     private let givenLabel = UILabel()
     private let familyLabel = UILabel()
     private let avatarView = UIImageView()
+    private let avatarInitialsLabel = UILabel()
     private let badgeBack = UIView()
     private let badgeIcon = UIImageView()
     private let badgeText = UILabel()
@@ -94,8 +95,10 @@ final class ContactCardCell: UICollectionViewCell {
 
         avatarView.contentMode = .scaleAspectFill
         avatarView.clipsToBounds = true
-        avatarView.layer.cornerRadius = 32
         contentView.addSubview(avatarView)
+        avatarInitialsLabel.textAlignment = .center
+        avatarInitialsLabel.textColor = .secondaryLabel
+        avatarView.addSubview(avatarInitialsLabel)
 
         badgeIcon.image = UIImage(systemName: "phone.fill",
             withConfiguration: UIImage.SymbolConfiguration(pointSize: 10))
@@ -122,10 +125,15 @@ final class ContactCardCell: UICollectionViewCell {
 
         contentView.backgroundColor = UIColor.secondarySystemBackground.withAlphaComponent(0.85)
 
-        givenLabel.text = contact.givenName.isEmpty ? nil : contact.givenName
-        givenLabel.isHidden = contact.givenName.isEmpty
-        familyLabel.text = contact.familyName.isEmpty ? nil : contact.familyName
-        familyLabel.isHidden = contact.familyName.isEmpty
+        let givenName = contact.givenName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let familyName = contact.familyName.trimmingCharacters(in: .whitespacesAndNewlines)
+        givenLabel.text = givenName.isEmpty && familyName.isEmpty ? contact.displayName : givenName
+        givenLabel.isHidden = givenLabel.text?.isEmpty ?? true
+        familyLabel.text = familyName
+        familyLabel.isHidden = familyName.isEmpty
+        avatarInitialsLabel.text = [givenName.first, familyName.first]
+            .compactMap { $0 }.map { String($0) }.joined().uppercased()
+        if avatarInitialsLabel.text?.isEmpty ?? true { avatarInitialsLabel.text = "?" }
         badgeText.text = "\(contact.outgoingCallsCount)"
 
         if contact.hasAvatar {
@@ -142,6 +150,7 @@ final class ContactCardCell: UICollectionViewCell {
             avatarView.isHidden = true
             avatarView.image = nil
         }
+        updateAvatarPlaceholder()
 
         setNeedsLayout()
     }
@@ -159,15 +168,26 @@ final class ContactCardCell: UICollectionViewCell {
             await MainActor.run { [weak self] in
                 // Загрузка, начатая раньше обновления фото, не должна затереть новый кэш.
                 if AvatarCache.shared.image(for: id) == nil { AvatarCache.shared.store(thumb, for: id) }
-                if self?.contactID == id { self?.avatarView.image = AvatarCache.shared.image(for: id) }
+                if self?.contactID == id {
+                    self?.avatarView.image = AvatarCache.shared.image(for: id)
+                    self?.updateAvatarPlaceholder()
+                }
             }
         }
+    }
+
+    private func updateAvatarPlaceholder() {
+        // Если система сообщает о фото, но оно ещё не загружено, заполняем
+        // место инициалами. Высота карточки при загрузке изображения не меняется.
+        let hasImage = avatarView.image != nil
+        avatarInitialsLabel.isHidden = hasImage
+        avatarView.backgroundColor = hasImage ? .clear : .tertiarySystemFill
     }
 
     override func layoutSubviews() {
         super.layoutSubviews()
         let b = contentView.bounds
-        let pad: CGFloat = 10
+        let pad: CGFloat = 8
 
         // Badge
         let iconSz: CGFloat = 10
@@ -180,32 +200,41 @@ final class ContactCardCell: UICollectionViewCell {
         badgeText.frame = CGRect(x: pH + iconSz + 3, y: (bH - textSz.height) / 2,
                                  width: textSz.width, height: textSz.height)
 
+        // Строки занимают высоту шрифта, а не половину оставшейся карточки.
+        // Пустое поле не оставляет под собой незаполненную строку.
+        let labels = [givenLabel, familyLabel].filter { !$0.isHidden }
+        let lineH = ceil(max(givenLabel.font.lineHeight, familyLabel.font.lineHeight))
+        let lineSpacing: CGFloat = 2
+        let textHeight = CGFloat(labels.count) * lineH + CGFloat(max(0, labels.count - 1)) * lineSpacing
+        var textTop: CGFloat
+
         if !avatarView.isHidden {
-            let sz: CGFloat = 64
-            avatarView.frame = CGRect(x: (b.width - sz) / 2, y: pad, width: sz, height: sz)
-            let top = avatarView.frame.maxY + 2
-            let lineH = (b.height - top - pad) / 2
-            givenLabel.frame = CGRect(x: pad, y: top, width: b.width - pad * 2, height: lineH)
-            familyLabel.frame = CGRect(x: pad, y: top + lineH, width: b.width - pad * 2, height: lineH)
+            let photoSpacing: CGFloat = 6
+            let availableHeight = max(0, b.height - pad * 2 - textHeight - photoSpacing)
+            let size = min(max(0, b.width - pad * 2), availableHeight)
+            let totalHeight = size + photoSpacing + textHeight
+            let top = max(pad, (b.height - totalHeight) / 2)
+            avatarView.frame = CGRect(x: (b.width - size) / 2, y: top, width: size, height: size)
+            avatarView.layer.cornerRadius = size / 2
+            avatarInitialsLabel.frame = avatarView.bounds
+            avatarInitialsLabel.font = .systemFont(ofSize: max(12, size * 0.36), weight: .medium)
+            textTop = avatarView.frame.maxY + photoSpacing
         } else {
             avatarView.frame = .zero
-            let linesCount = (givenLabel.isHidden ? 0 : 1) + (familyLabel.isHidden ? 0 : 1)
-            let lineH: CGFloat = 20
-            let totalH = CGFloat(linesCount) * lineH + (linesCount > 1 ? 1 : 0)
-            var y = (b.height - totalH) / 2
-            if !givenLabel.isHidden {
-                givenLabel.frame = CGRect(x: pad, y: y, width: b.width - pad * 2, height: lineH)
-                y += lineH + 1
-            }
-            if !familyLabel.isHidden {
-                familyLabel.frame = CGRect(x: pad, y: y, width: b.width - pad * 2, height: lineH)
-            }
+            textTop = (b.height - textHeight) / 2
+        }
+        givenLabel.frame = .zero
+        familyLabel.frame = .zero
+        for label in labels {
+            label.frame = CGRect(x: pad, y: textTop, width: max(0, b.width - pad * 2), height: lineH)
+            textTop += lineH + lineSpacing
         }
     }
 
     override func prepareForReuse() {
         super.prepareForReuse()
         avatarView.image = nil
+        avatarInitialsLabel.text = nil
         contactID = ""
         onCall = nil
     }

@@ -105,11 +105,47 @@ private final class FixtureContactsService: ContactsServiceProtocol {
     func fetchContacts() async throws -> [RawContact] {
         fetchCount += 1
         if fetchCount > 1 { try await Task.sleep(nanoseconds: 2_000_000_000) }
+        if ProcessInfo.processInfo.arguments.contains("--uitesting-contact-layout") {
+            return layoutContacts()
+        }
         return [
             RawContact(id: "anna", givenName: "Анна", familyName: "",
                        phoneNumbers: ["+7 111 222-33-44"], avatarData: nil),
             RawContact(id: "sasha", givenName: "Саша", familyName: "",
                        phoneNumbers: ["+7 999 123-45-67"], avatarData: nil)
+        ]
+    }
+
+    private func layoutContacts() -> [RawContact] {
+        func contact(_ id: String, _ givenName: String, _ familyName: String,
+                     photoText: String? = nil, missingPhoto: Bool = false) -> RawContact {
+            let photo = photoText.map { text in
+                UIGraphicsImageRenderer(size: CGSize(width: 256, height: 256)).image { _ in
+                    UIColor.systemIndigo.setFill()
+                    UIBezierPath(rect: CGRect(x: 0, y: 0, width: 256, height: 256)).fill()
+                    let attributes: [NSAttributedString.Key: Any] = [
+                        .font: UIFont.systemFont(ofSize: 90, weight: .medium),
+                        .foregroundColor: UIColor.white
+                    ]
+                    let size = (text as NSString).size(withAttributes: attributes)
+                    (text as NSString).draw(at: CGPoint(x: (256 - size.width) / 2,
+                                                      y: (256 - size.height) / 2),
+                                           withAttributes: attributes)
+                }.pngData()
+            }.flatMap { $0 }
+            return RawContact(id: id, givenName: givenName, familyName: familyName,
+                              phoneNumbers: ["+7 999 123-45-67"], avatarData: photo,
+                              imageDataAvailable: photo != nil || missingPhoto)
+        }
+        return [
+            contact("photo-full", "Анна", "Александрова", photoText: "АА"),
+            contact("photo-given", "Богдан", "", photoText: "Б"),
+            contact("photo-family", "", "Васильева", photoText: "В"),
+            contact("photo-unavailable", "Григорий", "Громов", missingPhoto: true),
+            contact("plain-full", "Дмитрий", "Даниленко"),
+            contact("plain-given", "Екатерина", ""),
+            contact("plain-family", " \n ", "Жукова"),
+            contact("plain-empty", " ", "\n")
         ]
     }
 }
